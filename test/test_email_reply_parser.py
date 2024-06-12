@@ -157,6 +157,11 @@ class EmailMessageTest(unittest.TestCase):
             "What is the best way to clear a Riak bucket of all key, values after\nrunning a test?\n" in mail.replies[
                 0].content)
 
+    def test_email_emoji(self):
+        mail = self.get_email('email_emoji', parse=True, languages=['en'])
+        self.assertEqual(1, len(mail.replies))
+        self.assertTrue("🎉\n\n—\nJohn Doe\nCEO at Pandaland\n\n@pandaland" in mail.replies[0].content)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt') as f:
