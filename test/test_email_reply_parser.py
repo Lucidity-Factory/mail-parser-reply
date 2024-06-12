@@ -185,6 +185,12 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual(1, len(mail.replies))
         self.assertTrue(COMMON_FIRST_FRAGMENT, mail.replies[0].content)
 
+    def test_email_gmail_split_line_from(self):
+        mail = self.get_email('email_gmail_split_line_from', parse=True, languages=['en'])
+        print(mail.replies)
+        self.assertEqual(2, len(mail.replies))
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].content)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt') as f:
