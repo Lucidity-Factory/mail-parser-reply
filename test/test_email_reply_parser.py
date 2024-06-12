@@ -290,8 +290,24 @@ class EmailMessageTest(unittest.TestCase):
         mail = self.get_email("email_sent_from", parse=True, languages=["en"])
         self.assertEqual(2, len(mail.replies))
         self.assertTrue(
-            "Hi it can happen to any texts you type, as long as you type in between words or paragraphs.\n" in
-            mail.replies[0].content
+            "Hi it can happen to any texts you type, as long as you type in between words or paragraphs.\n"
+            in mail.replies[0].content
+        )
+
+    def test_email_thread(self):
+        mail = self.get_email("email_thread", parse=True, languages=["en"])
+        self.assertEqual(3, len(mail.replies))
+        self.assertEqual(
+            "This is new email reply in thread from bellow.\n\nOn Nov 21, 2014,\nat 10:18,\nJohn Doe "
+            "<john@doe123.com> wrote:\n\n> Ok. Thanks.\n>",
+            mail.replies[0].content,
+        )
+        self.assertEqual(
+            "> On Nov 21, 2014, at 9:26, Jim Beam <jim@beam123.com> wrote:",
+            mail.replies[1].headers,
+        )
+        self.assertEqual(
+            ">> --\n>> Jim Beam – Acme Corp\n>>\n>", mail.replies[2].signatures
         )
 
     def get_email(self, name: str, parse: bool = True, languages: list = None):
