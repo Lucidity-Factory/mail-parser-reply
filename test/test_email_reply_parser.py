@@ -9,6 +9,12 @@ sys.path.append(root)
 from mailparser_reply import EmailReplyParser
 from mailparser_reply.constants import MAIL_LANGUAGE_DEFAULT
 
+COMMON_FIRST_FRAGMENT = 'Fusce bibendum, quam hendrerit sagittis tempor, dui turpis tempus erat, pharetra sodales ante sem sit amet metus.\n\
+Nulla malesuada, orci non vulputate lobortis, massa felis pharetra ex, convallis consectetur ex libero eget ante.\n\
+Nam vel turpis posuere, rhoncus ligula in, venenatis orci. Duis interdum venenatis ex a rutrum.\n\
+Duis ut libero eu lectus consequat consequat ut vel lorem. Vestibulum convallis lectus urna,\n\
+et mollis ligula rutrum quis. Fusce sed odio id arcu varius aliquet nec nec nibh.'
+
 
 class EmailMessageTest(unittest.TestCase):
     def test_simple_body(self):
@@ -73,7 +79,8 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual(2, len(mail.replies))
         self.assertTrue("Outlook with a reply above headers using unusual format" == mail.replies[0].body)
         # _normalize_body flattens the lines
-        self.assertTrue("Ei tale aliquam eum, at vel tale sensibus, an sit vero magna. Vis no veri" in mail.replies[1].body)
+        self.assertTrue(
+            "Ei tale aliquam eum, at vel tale sensibus, an sit vero magna. Vis no veri" in mail.replies[1].body)
 
     def test_complex_mail_thread(self):
         mail = self.get_email('email_3_1', parse=True, languages=['en', 'de', 'david'])
@@ -84,7 +91,7 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual(4, len(mail.replies))
 
     def test_header_no_delimiter(self):
-        mail = self.get_email('email_headers_no_delimiter', parse=True, languages=['en',])
+        mail = self.get_email('email_headers_no_delimiter', parse=True, languages=['en', ])
         self.assertEqual(3, len(mail.replies))
         self.assertTrue("And another reply!" == mail.replies[0].body)
         self.assertTrue("A reply" == mail.replies[1].body)
@@ -112,7 +119,8 @@ class EmailMessageTest(unittest.TestCase):
     def test_sent_from_junk4(self):
         mail = self.get_email('email_sent_from_not_signature', parse=True, languages=['en'])
         self.assertEqual(1, len(mail.replies))
-        self.assertTrue("Here is another email\n\nSent from my desk, is much easier than my mobile phone." == mail.replies[0].body)
+        self.assertTrue(
+            "Here is another email\n\nSent from my desk, is much easier than my mobile phone." == mail.replies[0].body)
         self.assertTrue("" == mail.replies[0].signatures)
 
     def test_ja_simple_body(self):
@@ -161,6 +169,11 @@ class EmailMessageTest(unittest.TestCase):
         mail = self.get_email('email_emoji', parse=True, languages=['en'])
         self.assertEqual(1, len(mail.replies))
         self.assertTrue("🎉\n\n—\nJohn Doe\nCEO at Pandaland\n\n@pandaland" in mail.replies[0].content)
+
+    def test_en_multiline_2(self):
+        mail = self.get_email('email_en_multiline_2', parse=True, languages=['en'])
+        self.assertEqual(2, len(mail.replies))
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].content)
 
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
