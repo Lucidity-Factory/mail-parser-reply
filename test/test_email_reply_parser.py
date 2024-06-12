@@ -315,6 +315,11 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual(1, len(mail.replies))
         self.assertTrue(COMMON_FIRST_FRAGMENT in mail.replies[0].content)
 
+    def test_email_8(self):
+        mail = self.get_email("email_8", parse=True, languages=["en"])
+        self.assertEqual(1, len(mail.replies))
+        self.assertTrue(COMMON_FIRST_FRAGMENT in mail.replies[0].content)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """Return EmailMessage instance or text content"""
         with open(f"test/emails/{name}.txt") as f:
