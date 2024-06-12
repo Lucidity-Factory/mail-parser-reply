@@ -175,6 +175,16 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual(2, len(mail.replies))
         self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].content)
 
+    def test_email_finnish(self):
+        mail = self.get_email('email_finnish', parse=True, languages=['en'])
+        self.assertEqual(1, len(mail.replies))
+        self.assertTrue(COMMON_FIRST_FRAGMENT in mail.replies[0].content)
+
+    def test_email_fr_multiline(self):
+        mail = self.get_email('email_fr_multiline', parse=True, languages=['fr'])
+        self.assertEqual(1, len(mail.replies))
+        self.assertTrue(COMMON_FIRST_FRAGMENT, mail.replies[0].content)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt') as f:
