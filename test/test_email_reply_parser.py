@@ -272,6 +272,20 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual(2, len(mail.replies))
         self.assertTrue(COMMON_FIRST_FRAGMENT in mail.replies[0].content)
 
+    def test_email_reply_header(self):
+        mail = self.get_email("email_reply_header", parse=True, languages=["en"])
+        self.assertEqual(3, len(mail.replies))
+        self.assertTrue("On the other hand" in mail.replies[0].content)
+        self.assertTrue("On Wed, Dec 9" in mail.replies[1].content)
+        self.assertEqual(
+            "On Wed, Dec 9, Mister Example\n<mrmister@example.com>\nwrote:",
+            mail.replies[1].headers,
+        )
+        self.assertEqual(
+            "> On Tue, 2011-03-01 at 18:02 +0530, Stranger Jones wrote:",
+            mail.replies[2].headers,
+        )
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """Return EmailMessage instance or text content"""
         with open(f"test/emails/{name}.txt") as f:
