@@ -194,7 +194,14 @@ class EmailMessageTest(unittest.TestCase):
         mail = self.get_email('email_ios_outlook', parse=True, languages=['en'])
         self.assertEqual(2, len(mail.replies))
         self.assertTrue(COMMON_FIRST_FRAGMENT in mail.replies[0].content)
-        self.assertTrue("From: The Hiring Engine <job-applicant-incoming-text+65701@hiringenginemail.com>\n" in mail.replies[1].headers)
+        self.assertTrue("From: The Hiring Engine <job-applicant-incoming-text+65701@hiringenginemail.com>\n" in
+                        mail.replies[1].headers)
+
+    def test_email_iphone(self):
+        mail = self.get_email('email_iphone', parse=True, languages=['en'])
+        self.assertEqual(1, len(mail.replies))
+        self.assertEqual('Here is another email\n\nSent from my iPhone', mail.replies[0].content)
+        self.assertEqual('Sent from my iPhone', mail.replies[0].signatures)
 
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
