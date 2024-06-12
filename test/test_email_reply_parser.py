@@ -286,6 +286,14 @@ class EmailMessageTest(unittest.TestCase):
             mail.replies[2].headers,
         )
 
+    def test_email_sent_from(self):
+        mail = self.get_email("email_sent_from", parse=True, languages=["en"])
+        self.assertEqual(2, len(mail.replies))
+        self.assertTrue(
+            "Hi it can happen to any texts you type, as long as you type in between words or paragraphs.\n" in
+            mail.replies[0].content
+        )
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """Return EmailMessage instance or text content"""
         with open(f"test/emails/{name}.txt") as f:
