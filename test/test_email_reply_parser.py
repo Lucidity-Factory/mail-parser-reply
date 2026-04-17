@@ -308,6 +308,12 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
         self.assertTrue('a \u00e9crit' in mail.replies[1].headers)
 
+    def test_crisp_fr_ios_outlook(self):
+        # New: "Envoyé à partir de Outlook pour iOS<...>" caught as sent_from signature
+        mail = self.get_email('email_crisp_fr_ios', parse=True, languages=['fr', 'en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue('Envoy\u00e9 \u00e0 partir de' in mail.replies[0].signatures)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt', encoding='utf-8') as f:

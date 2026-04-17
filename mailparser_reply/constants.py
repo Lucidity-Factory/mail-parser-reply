@@ -188,7 +188,7 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
             r'bonne r[\u00e9e]ception',
             r'bonne journ[\u00e9e]e',
         ],
-        'sent_from': r'Envoy\u00e9 depuis',
+        'sent_from': r'Envoy\u00e9 \u00e0 partir de|Envoy\u00e9 de mon|Envoy\u00e9 depuis|T\u00e9l\u00e9charger Outlook pour',
     },
     'it': {
         'wrote_header': r'^(?!Il[.\s]*Il\s(.+?\s?.+?)\sha scritto:)('
