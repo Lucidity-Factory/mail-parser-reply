@@ -289,6 +289,25 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
         self.assertTrue(any('Oprindelig' in r.content for r in mail.replies[1:]))
 
+    def test_crisp_en_multiline_wrote(self):
+        # New: "On ... <...>\nwrote:" spans a newline (Outlook/iOS wrap)
+        mail = self.get_email('email_crisp_en_multiline_2', parse=True, languages=['en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue('wrote:' in mail.replies[1].headers)
+
+    def test_crisp_fr_multiline(self):
+        # New: "Le ... <...>\na écrit :" spans a newline
+        mail = self.get_email('email_crisp_fr_multiline', parse=True, languages=['fr'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue('\n' in mail.replies[1].headers)
+        self.assertTrue('a \u00e9crit' in mail.replies[1].headers)
+
+    def test_crisp_fr_quoted(self):
+        # Regression: single-line "Le ... a écrit:" still matches after multi-line rewrite
+        mail = self.get_email('email_crisp_fr_2', parse=True, languages=['fr'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue('a \u00e9crit' in mail.replies[1].headers)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt', encoding='utf-8') as f:
