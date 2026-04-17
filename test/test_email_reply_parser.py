@@ -324,6 +324,12 @@ class EmailMessageTest(unittest.TestCase):
         self.assertTrue('Thanks for the update!' in mail.replies[0].body)
         self.assertTrue('Cheers' not in mail.replies[0].body)
 
+    def test_crisp_it_in_data(self):
+        # New: IT "In data ... ha scritto:" alternate (some Outlook locales)
+        mail = self.get_email('email_crisp_it', parse=True, languages=['it'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue('In data' in mail.replies[1].headers)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt', encoding='utf-8') as f:

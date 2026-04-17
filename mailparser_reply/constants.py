@@ -204,9 +204,11 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         'sent_from': r'Envoy\u00e9 \u00e0 partir de|Envoy\u00e9 de mon|Envoy\u00e9 depuis|T\u00e9l\u00e9charger Outlook pour',
     },
     'it': {
-        'wrote_header': r'^(?!Il[.\s]*Il\s(.+?\s?.+?)\sha scritto:)('
+        # Accept both "Il <date> ha scritto:" and "In data <date> ha scritto:"
+        # (the latter is the phrasing used by some Italian Outlook locales).
+        'wrote_header': r'^(?!(?:Il|In data)[.\s]*(?:Il|In data)\s[\s\S]+?ha scritto:)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'Il\s(?:.+?\s?.+?)\s?ha scritto:)$',
+                        + r'(?:Il|In data)\s[\s\S]+?\s?ha scritto:)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:Da|Inviato|A|Oggetto|Data|Cc):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
