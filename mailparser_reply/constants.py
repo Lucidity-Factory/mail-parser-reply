@@ -78,6 +78,10 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
             'Best,',
             'All the best',
             'regards,',
+            r'Cheers,?!?',
+            # "Best wishes" — ported from crisp-oss/email-reply-parser; no fixture
+            # in the upstream repo currently exercises this line.
+            r'Best wishes,?!?',
         ],
         'sent_from': 'Sent from my|Get Outlook for',
     },
@@ -96,6 +100,10 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
             r'Mit freundlichen Gr\u00fc\u00DFen',
             r'Mit freundlichen Gr\u00fc\u00DFen / (?:Best|Kind) regards,',
             r'(?:(?:Beste(?:n)?|Liebe|Viele) )?(?:Gr(?:\u00fc|ue)(?:\u00DF|ss)(?:e)?|Gru\u00DF|Gruss)',
+            # "Von <device> gesendet" — mirror of the existing "Gesendet von ..."
+            # sent-from, ported from crisp-oss/email-reply-parser; no fixture
+            # currently exercises this line.
+            r'Von\s[^\n]+?\sgesendet',
         ],
         'sent_from': 'Gesendet von',
     },
@@ -187,6 +195,11 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
             'salutations',
             r'bonne r[\u00e9e]ception',
             r'bonne journ[\u00e9e]e',
+            # "bonne soirée" / "Bien à vous" — ported from
+            # crisp-oss/email-reply-parser; no fixture in the upstream repo
+            # currently exercises these lines.
+            r'bonne soir[\u00e9e]e',
+            r'Bien \u00e0 vous',
         ],
         'sent_from': r'Envoy\u00e9 \u00e0 partir de|Envoy\u00e9 de mon|Envoy\u00e9 depuis|T\u00e9l\u00e9charger Outlook pour',
     },

@@ -314,6 +314,16 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
         self.assertTrue('Envoy\u00e9 \u00e0 partir de' in mail.replies[0].signatures)
 
+    def test_crisp_cheers_signature(self):
+        # New EN "Cheers,?!?" signature — covers the case of a sign-off with
+        # no trailing comma/bang (e.g. "Cheers 🎉").
+        mail = self.get_email('email_crisp_cheers', parse=True, languages=['en'])
+        self.assertEqual(1, len(mail.replies))
+        self.assertTrue('Cheers' in mail.replies[0].signatures)
+        self.assertTrue('Sarah Johnson' in mail.replies[0].signatures)
+        self.assertTrue('Thanks for the update!' in mail.replies[0].body)
+        self.assertTrue('Cheers' not in mail.replies[0].body)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt', encoding='utf-8') as f:
