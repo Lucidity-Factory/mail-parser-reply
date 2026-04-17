@@ -15,8 +15,13 @@ QUOTED_MATCH_INCLUDE = r'(?:> ?)*'
 #: Outlook-style mail separator (32 underscores); also occasionally
 #: used within signatures
 OUTLOOK_MAIL_SEPARATOR = r'(\n{2,} ?[_-]{32,})'
-#: Common mail separators (+ old Outlook separator)
-GENERIC_MAIL_SEPARATOR = r'^-{5,} ?Original Message ?-{5,}$'
+#: Common mail separators (+ old Outlook separator). Covers EN/DA/FR/DE variants
+#: such as "----- Original Message -----", "-------- Oprindelig Besked --------",
+#: "-------- Message d'origine --------", and "-----Ursprüngliche Nachricht-----".
+GENERIC_MAIL_SEPARATOR = (
+    r"^-{5,} ?(?:Original Message|Oprindelig Besked|"
+    r"Message d['\u2019]origine|Urspr\u00fcngliche Nachricht) ?-{5,}$"
+)
 
 #: Outlook Signature defaults; line optionally starts with whitespace, contains two
 #: hyphens or underscores, and ends with optional whitespace.

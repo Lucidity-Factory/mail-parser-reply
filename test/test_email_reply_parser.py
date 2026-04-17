@@ -9,6 +9,15 @@ sys.path.append(root)
 from mailparser_reply import EmailReplyParser, EmailMessage
 from mailparser_reply.constants import MAIL_LANGUAGE_DEFAULT
 
+#: Shared first-reply body used across fixtures ported from crisp-oss/email-reply-parser
+COMMON_FIRST_FRAGMENT = (
+    "Fusce bibendum, quam hendrerit sagittis tempor, dui turpis tempus erat, pharetra sodales ante sem sit amet metus.\n"
+    "Nulla malesuada, orci non vulputate lobortis, massa felis pharetra ex, convallis consectetur ex libero eget ante.\n"
+    "Nam vel turpis posuere, rhoncus ligula in, venenatis orci. Duis interdum venenatis ex a rutrum.\n"
+    "Duis ut libero eu lectus consequat consequat ut vel lorem. Vestibulum convallis lectus urna,\n"
+    "et mollis ligula rutrum quis. Fusce sed odio id arcu varius aliquet nec nec nibh."
+)
+
 
 class EmailMessageTest(unittest.TestCase):
     def test_simple_body(self):
@@ -248,6 +257,37 @@ class EmailMessageTest(unittest.TestCase):
         self.assertIn("Svar.", mail.replies[0].body)
         self.assertIn("Kh\nPeter", mail.replies[0].signatures)
         self.assertNotIn("Kh\nPeter", mail.replies[0].body)
+
+    # --- Patterns ported from crisp-oss/email-reply-parser ---
+    def test_crisp_original_message(self):
+        # Existing "----- Original Message -----" separator — regression
+        mail = self.get_email('email_crisp_original_message', parse=True, languages=['en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue(any('original message' in r.content.lower() for r in mail.replies[1:]))
+
+    def test_crisp_original_message_2(self):
+        # Existing "----- Original Message -----" separator — regression
+        mail = self.get_email('email_crisp_original_message_2', parse=True, languages=['en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue(any('Original Message' in r.content for r in mail.replies[1:]))
+
+    def test_crisp_fr_separator(self):
+        # New: "-------- Message d'origine --------" separator
+        mail = self.get_email('email_crisp_fr_separator', parse=True, languages=['en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue(any("Message d'origine" in r.content for r in mail.replies[1:]))
+
+    def test_crisp_de_outlook_separator(self):
+        # New: "-----Ursprüngliche Nachricht-----" separator
+        mail = self.get_email('email_crisp_de_outlook', parse=True, languages=['de'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue(any('Urspr\u00fcngliche Nachricht' in r.content for r in mail.replies[1:]))
+
+    def test_crisp_da_separator(self):
+        # New: "-------- Oprindelig Besked --------" separator (language-independent)
+        mail = self.get_email('email_crisp_da_separator', parse=True, languages=['en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue(any('Oprindelig' in r.content for r in mail.replies[1:]))
 
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
