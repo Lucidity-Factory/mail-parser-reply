@@ -262,6 +262,24 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         ],
         'sent_from': 'Wysłano z'
     },
+    'pt': {
+        # Portuguese: "Em <date>, <name> <email> escreveu:" — date can wrap across lines.
+        # Example: "Em 10 de julho de 2017 às 16:32:35, John Doe (a@b.com) escreveu:"
+        'wrote_header': r'^(?!Em[.\s]*Em\s[\s\S]+?escreveu:)('
+                        + QUOTED_MATCH_INCLUDE
+                        + r'Em\s[\s\S]+?escreveu:)$',
+        'from_header': r'((?:(?:^|\n|\n'
+                       + QUOTED_MATCH_INCLUDE
+                       + r')[* ]*(?:De|Enviado|Para|Assunto|Data|CC):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
+        'disclaimers': [],
+        'signatures': [
+            'Atenciosamente',
+            'Cumprimentos',
+            r'Abra\u00e7os',
+            'Obrigado',
+        ],
+        'sent_from': 'Enviado do meu',
+    },
     'sv': {
         'wrote_header': r"^(?!Den[.\s]*Den\s(.+?\s?.+?)\skrev:)("
                         + QUOTED_MATCH_INCLUDE

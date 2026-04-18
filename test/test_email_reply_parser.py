@@ -249,6 +249,13 @@ class EmailMessageTest(unittest.TestCase):
         self.assertIn("Kh\nPeter", mail.replies[0].signatures)
         self.assertNotIn("Kh\nPeter", mail.replies[0].body)
 
+    def test_portuguese_quoted_reply(self):
+        mail = self.get_email('email_crisp_pt', parse=True, languages=['pt'])
+        self.assertEqual(2, len(mail.replies))
+        self.assertIn("Fusce bibendum", mail.replies[0].body)
+        self.assertIn("escreveu:", mail.replies[1].headers)
+        self.assertIn("Hi there!", mail.replies[1].body)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt', encoding='utf-8') as f:
