@@ -166,6 +166,25 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         ],
         'sent_from': r'Enviado desde mi.*',
     },
+    'fi': {
+        # Finnish: "<weekday abbr> <day>. <month> <year> klo <time> <name> <email> kirjoitti:"
+        # Example: "pe 20. lokakuuta 2017 klo 17.50 John Coe <j@x.com> kirjoitti:"
+        # The leading "\w{2,4}\s\d" matches "pe 20", "ma 1", "ke 12", etc.
+        # Negative lookahead avoids greedily spanning multiple "kirjoitti:" headers.
+        'wrote_header': r'^(?!\w{2,4}\s\d[\s\S]+?kirjoitti:[\s\S]+?kirjoitti:)('
+                        + QUOTED_MATCH_INCLUDE
+                        + r'\w{2,4}\s\d[\s\S]+?kirjoitti:)$',
+        'from_header': r'((?:(?:^|\n|\n'
+                       + QUOTED_MATCH_INCLUDE
+                       + r')[* ]*(?:L\u00e4hett\u00e4j\u00e4|L\u00e4hetetty|Vastaanottaja|Aihe|P\u00e4iv\u00e4m\u00e4\u00e4r\u00e4):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
+        'disclaimers': [],
+        'signatures': [
+            r'Yst\u00e4v\u00e4llisin terveisin',
+            'Parhain terveisin',
+            'Terveisin',
+        ],
+        'sent_from': r'L\u00e4hetetty',
+    },
     'fr': {
         'wrote_header': r'^(?!Le.*Le\s.+?a \u00e9crit[a-zA-Z0-9.:;<>()&@ -]*:)('
                         + QUOTED_MATCH_INCLUDE
