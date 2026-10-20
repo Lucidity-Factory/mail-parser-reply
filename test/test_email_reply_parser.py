@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import unittest
 import logging
 
@@ -8,6 +9,15 @@ root = os.path.join(base_path, '..')
 sys.path.append(root)
 from mailparser_reply import EmailReplyParser, EmailMessage
 from mailparser_reply.constants import MAIL_LANGUAGE_DEFAULT
+
+#: Shared first-reply body used across fixtures ported from crisp-oss/email-reply-parser
+COMMON_FIRST_FRAGMENT = (
+    "Fusce bibendum, quam hendrerit sagittis tempor, dui turpis tempus erat, pharetra sodales ante sem sit amet metus.\n"
+    "Nulla malesuada, orci non vulputate lobortis, massa felis pharetra ex, convallis consectetur ex libero eget ante.\n"
+    "Nam vel turpis posuere, rhoncus ligula in, venenatis orci. Duis interdum venenatis ex a rutrum.\n"
+    "Duis ut libero eu lectus consequat consequat ut vel lorem. Vestibulum convallis lectus urna,\n"
+    "et mollis ligula rutrum quis. Fusce sed odio id arcu varius aliquet nec nec nibh."
+)
 
 
 class EmailMessageTest(unittest.TestCase):
@@ -248,6 +258,112 @@ class EmailMessageTest(unittest.TestCase):
         self.assertIn("Svar.", mail.replies[0].body)
         self.assertIn("Kh\nPeter", mail.replies[0].signatures)
         self.assertNotIn("Kh\nPeter", mail.replies[0].body)
+
+    # --- Patterns ported from crisp-oss/email-reply-parser ---
+    def test_crisp_original_message(self):
+        # Existing "----- Original Message -----" separator — regression
+        mail = self.get_email('email_crisp_original_message', parse=True, languages=['en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue(any('original message' in r.content.lower() for r in mail.replies[1:]))
+
+    def test_crisp_original_message_2(self):
+        # Existing "----- Original Message -----" separator — regression
+        mail = self.get_email('email_crisp_original_message_2', parse=True, languages=['en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue(any('Original Message' in r.content for r in mail.replies[1:]))
+
+    def test_crisp_fr_separator(self):
+        # New: "-------- Message d'origine --------" separator
+        mail = self.get_email('email_crisp_fr_separator', parse=True, languages=['en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue(any("Message d'origine" in r.content for r in mail.replies[1:]))
+
+    def test_crisp_de_outlook_separator(self):
+        # New: "-----Ursprüngliche Nachricht-----" separator
+        mail = self.get_email('email_crisp_de_outlook', parse=True, languages=['de'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue(any('Urspr\u00fcngliche Nachricht' in r.content for r in mail.replies[1:]))
+
+    def test_crisp_da_separator(self):
+        # New: "-------- Oprindelig Besked --------" separator (language-independent)
+        mail = self.get_email('email_crisp_da_separator', parse=True, languages=['en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue(any('Oprindelig' in r.content for r in mail.replies[1:]))
+
+    def test_crisp_en_multiline_wrote(self):
+        # New: "On ... <...>\nwrote:" spans a newline (Outlook/iOS wrap)
+        mail = self.get_email('email_crisp_en_multiline_2', parse=True, languages=['en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue('wrote:' in mail.replies[1].headers)
+
+    def test_crisp_fr_multiline(self):
+        # New: "Le ... <...>\na écrit :" spans a newline
+        mail = self.get_email('email_crisp_fr_multiline', parse=True, languages=['fr'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue('\n' in mail.replies[1].headers)
+        self.assertTrue('a \u00e9crit' in mail.replies[1].headers)
+
+    def test_crisp_fr_quoted(self):
+        # Regression: single-line "Le ... a écrit:" still matches after multi-line rewrite
+        mail = self.get_email('email_crisp_fr_2', parse=True, languages=['fr'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue('a \u00e9crit' in mail.replies[1].headers)
+
+    def test_crisp_fr_ios_outlook(self):
+        # New: "Envoyé à partir de Outlook pour iOS<...>" caught as sent_from signature
+        mail = self.get_email('email_crisp_fr_ios', parse=True, languages=['fr', 'en'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue('Envoy\u00e9 \u00e0 partir de' in mail.replies[0].signatures)
+
+    def test_crisp_cheers_signature(self):
+        # New EN "Cheers,?!?" signature — covers the case of a sign-off with
+        # no trailing comma/bang (e.g. "Cheers 🎉").
+        mail = self.get_email('email_crisp_cheers', parse=True, languages=['en'])
+        self.assertEqual(1, len(mail.replies))
+        self.assertTrue('Cheers' in mail.replies[0].signatures)
+        self.assertTrue('Sarah Johnson' in mail.replies[0].signatures)
+        self.assertTrue('Thanks for the update!' in mail.replies[0].body)
+        self.assertTrue('Cheers' not in mail.replies[0].body)
+
+    def test_crisp_it_in_data(self):
+        # New: IT "In data ... ha scritto:" alternate (some Outlook locales)
+        mail = self.get_email('email_crisp_it', parse=True, languages=['it'])
+        self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
+        self.assertTrue('In data' in mail.replies[1].headers)
+
+    def test_en_prose_line_starts_with_on(self):
+        # Regression: a wrapped prose line beginning with "on " above a real
+        # "On ... wrote:" must not start the header and swallow the new text
+        mail = self.get_email('email_en_prose_line_starts_with_on', parse=True, languages=['en'])
+        self.assertEqual(
+            "Hi Ben,\n\nI saw the notice\non the website this morning and wanted to check the time for Saturday. My\n"
+            "sister will come too.\n\nAnn",
+            mail.latest_reply
+        )
+
+    def test_fr_gmail_wrapped(self):
+        # Gmail wraps the French header inside the angle brackets of the address
+        mail = self.get_email('email_fr_gmail_wrapped', parse=True, languages=['fr'])
+        self.assertEqual("Bonjour Ben,\n\nMerci, c'est parfait.\n\nAnn", mail.latest_reply)
+        self.assertTrue('a \u00e9crit' in mail.replies[1].headers)
+
+    def test_fr_gmail_name_contains_le(self):
+        # Regression: a later "le " (here inside the name) before "a écrit" must not
+        # make the negative lookahead reject a wrapped header
+        # (a single-line header with such a name is still rejected, as upstream has it)
+        mail = self.get_email('email_fr_gmail_name_contains_le', parse=True, languages=['fr'])
+        self.assertEqual("Bonjour Ben,\n\nMerci, c'est parfait.\n\nAnn", mail.latest_reply)
+        self.assertTrue('a \u00e9crit' in mail.replies[1].headers)
+
+    def test_fr_wrote_header_runtime_many_le_lines(self):
+        # Regression: an unbounded [\s\S] gap in the FR lookahead made matching roughly
+        # cubic in the number of lines starting with "Le" (800 lines took about 18 s).
+        # Generated input rather than a fixture: this pins run time, not pattern coverage.
+        text = 'Hi\n\n' + 'Le point est not\u00e9\n' * 800
+        start = time.monotonic()
+        mail = EmailReplyParser(languages=['fr']).read(text)
+        self.assertLess(time.monotonic() - start, 1.0)
+        self.assertEqual(text.strip(), mail.latest_reply)
 
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """

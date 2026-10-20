@@ -15,8 +15,13 @@ QUOTED_MATCH_INCLUDE = r'(?:> ?)*'
 #: Outlook-style mail separator (32 underscores); also occasionally
 #: used within signatures
 OUTLOOK_MAIL_SEPARATOR = r'(\n{2,} ?[_-]{32,})'
-#: Common mail separators (+ old Outlook separator)
-GENERIC_MAIL_SEPARATOR = r'^-{5,} ?Original Message ?-{5,}$'
+#: Common mail separators (+ old Outlook separator). Covers EN/DA/FR/DE variants
+#: such as "----- Original Message -----", "-------- Oprindelig Besked --------",
+#: "-------- Message d'origine --------", and "-----Ursprüngliche Nachricht-----".
+GENERIC_MAIL_SEPARATOR = (
+    r"^-{5,} ?(?:Original Message|Oprindelig Besked|"
+    r"Message d['\u2019]origine|Urspr\u00fcngliche Nachricht) ?-{5,}$"
+)
 
 #: Outlook Signature defaults; line optionally starts with whitespace, contains two
 #: hyphens or underscores, and ends with optional whitespace.
@@ -72,6 +77,10 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
             'Best,',
             'All the best',
             'regards,',
+            r'Cheers,?!?',
+            # "Best wishes" — ported from crisp-oss/email-reply-parser; no fixture
+            # in the upstream repo currently exercises this line.
+            r'Best wishes,?!?',
         ],
         'sent_from': 'Sent from my|Get Outlook for',
     },
@@ -90,6 +99,10 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
             r'Mit freundlichen Gr\u00fc\u00DFen',
             r'Mit freundlichen Gr\u00fc\u00DFen / (?:Best|Kind) regards,',
             r'(?:(?:Beste(?:n)?|Liebe|Viele) )?(?:Gr(?:\u00fc|ue)(?:\u00DF|ss)(?:e)?|Gru\u00DF|Gruss)',
+            # "Von <device> gesendet" — mirror of the existing "Gesendet von ..."
+            # sent-from, ported from crisp-oss/email-reply-parser; no fixture
+            # currently exercises this line.
+            r'Von\s[^\n]+?\sgesendet',
         ],
         'sent_from': 'Gesendet von',
     },
@@ -167,9 +180,15 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         'sent_from': r'Enviado desde mi.*',
     },
     'fr': {
+        # Le\s(?:.+?\s?.+?)\s?a écrit : same bounded gap as the other languages, so a
+        #   wrapped header (Gmail, Outlook/iOS) still matches: at most three line breaks,
+        #   after "Le", inside the gap and before "a écrit", never a blank line.
+        #   The negative lookahead stays on one line (.), as upstream has it.
+        #   See email_crisp_fr_multiline.txt / email_fr_gmail_wrapped.txt for example data
+        # ^...$ anchoring retained from upstream's PR #25 (line-anchoring fix).
         'wrote_header': r'^(?!Le.*Le\s.+?a \u00e9crit[a-zA-Z0-9.:;<>()&@ -]*:)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'Le\s(.+?)a \u00e9crit[a-zA-Z0-9.:;<>()&@ -]*:)$',
+                        + r'Le\s(?:.+?\s?.+?)\s?a \u00e9crit[a-zA-Z0-9.:;<>()&@ -]*:)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:De |Envoy\u00e9 |\u00C0 |Objet |  |Cc ):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
@@ -178,13 +197,20 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
             'salutations',
             r'bonne r[\u00e9e]ception',
             r'bonne journ[\u00e9e]e',
+            # "bonne soirée" / "Bien à vous" — ported from
+            # crisp-oss/email-reply-parser; no fixture in the upstream repo
+            # currently exercises these lines.
+            r'bonne soir[\u00e9e]e',
+            r'Bien \u00e0 vous',
         ],
-        'sent_from': r'Envoy\u00e9 depuis',
+        'sent_from': r'Envoy\u00e9 \u00e0 partir de|Envoy\u00e9 de mon|Envoy\u00e9 depuis|T\u00e9l\u00e9charger Outlook pour',
     },
     'it': {
-        'wrote_header': r'^(?!Il[.\s]*Il\s(.+?\s?.+?)\sha scritto:)('
+        # Accept both "Il <date> ha scritto:" and "In data <date> ha scritto:"
+        # (the latter is the phrasing used by some Italian Outlook locales).
+        'wrote_header': r'^(?!(?:Il|In data)[.\s]*(?:Il|In data)\s(.+?\s?.+?)\sha scritto:)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'Il\s(?:.+?\s?.+?)\s?ha scritto:)$',
+                        + r'(?:Il|In data)\s(?:.+?\s?.+?)\s?ha scritto:)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:Da|Inviato|A|Oggetto|Data|Cc):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
