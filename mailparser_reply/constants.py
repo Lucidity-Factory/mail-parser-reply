@@ -20,11 +20,16 @@ OUTLOOK_MAIL_SEPARATOR = r'(\n{2,} ?[_-]{32,})'
 #: "-------- Message d'origine --------", and "-----Ursprüngliche Nachricht-----".
 #: Also forward separators: Gmail's "---------- Forwarded message ---------" and
 #: Zoho's "============ Forwarded Message ============" (matched case-insensitively, so
-#: "----- Forwarded Message -----" and similar variants match too).
+#: "----- Forwarded Message -----" and similar variants match too). Outlook's line of 32 or
+#: more underscores counts only when the next line starts with "From:" ("*From:*" and
+#: "From :" too; case-sensitive), the only label seen after it in real mail, so underscore
+#: lines followed by "Website:", "Tel:" or plain text, as in signatures or meeting invites,
+#: are left alone. An underscore line after a blank line is already removed by
+#: EmailMessage._normalize_text, so this applies to one directly under the text.
 GENERIC_MAIL_SEPARATOR = (
     r"^(?:-{5,} ?(?:Original Message|Oprindelig Besked|"
     r"Message d['\u2019]origine|Urspr\u00fcngliche Nachricht|Forwarded message) ?-{5,}|"
-    r"={5,} ?Forwarded Message ?={5,})$"
+    r"={5,} ?Forwarded Message ?={5,}|_{32,}(?=\n[* ]*(?-i:From) ?:))$"
 )
 
 #: Outlook Signature defaults; line optionally starts with whitespace, contains two
