@@ -329,7 +329,7 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
                         + r'Dnia\s' + WRAPPED_GAP + r'\s?(?:nadesłał|napisał\(a\)):)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
-                       + r')[* ]*(?:Od|Wysłano|Do|Temat|Data|DW):[ *]*(?:\s{,2}).*){1,}(?:\n.*){,1})',
+                       + r')[* ]*(?:Od|Wysłano|Do|Temat|Data|DW):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
         'disclaimers': [
             'Uwaga:'
         ],
