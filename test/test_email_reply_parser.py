@@ -330,6 +330,30 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual(COMMON_FIRST_FRAGMENT, mail.replies[0].body)
         self.assertTrue('In data' in mail.replies[1].headers)
 
+    def test_en_prose_line_starts_with_on(self):
+        # Regression: a wrapped prose line beginning with "on " above a real
+        # "On ... wrote:" must not start the header and swallow the new text
+        mail = self.get_email('email_en_prose_line_starts_with_on', parse=True, languages=['en'])
+        self.assertEqual(
+            "Hi Ben,\n\nI saw the notice\non the website this morning and wanted to check the time for Saturday. My\n"
+            "sister will come too.\n\nAnn",
+            mail.latest_reply
+        )
+
+    def test_fr_gmail_wrapped(self):
+        # Gmail wraps the French header inside the angle brackets of the address
+        mail = self.get_email('email_fr_gmail_wrapped', parse=True, languages=['fr'])
+        self.assertEqual("Bonjour Ben,\n\nMerci, c'est parfait.\n\nAnn", mail.latest_reply)
+        self.assertTrue('a \u00e9crit' in mail.replies[1].headers)
+
+    def test_fr_gmail_name_contains_le(self):
+        # Regression: a later "le " (here inside the name) before "a écrit" must not
+        # make the negative lookahead reject a wrapped header
+        # (a single-line header with such a name is still rejected, as upstream has it)
+        mail = self.get_email('email_fr_gmail_name_contains_le', parse=True, languages=['fr'])
+        self.assertEqual("Bonjour Ben,\n\nMerci, c'est parfait.\n\nAnn", mail.latest_reply)
+        self.assertTrue('a \u00e9crit' in mail.replies[1].headers)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt', encoding='utf-8') as f:

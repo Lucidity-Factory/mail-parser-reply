@@ -46,13 +46,12 @@ SENTENCE_START = rf'(?:[\n\r.!?]|^){SINGLE_SPACE_VARIATIONS}{{0,3}}'
 MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
     'en': {
         # Apple Mail-style header
-        # ^(?!On[.\s]*On\s[\s\S]+?wrote:) – Negative lookahead, see:
+        # ^(?!On[.\s]*On\s(.+?\s?.+?)\swrote:) – Negative lookahead, see:
         #    https://github.com/github/email_reply_parser/pull/31
         # <QUOTED_MATCH_INCLUDE> – allow matching this inside quoted levels
-        # On\s[\s\S]+?\s?wrote: – match "On 01.01.2025, John Doe wrote:" across any
-        #   number of lines — some clients wrap the header.
-        #   See multiline_on.txt / email_crisp_en_multiline_2.txt for example data
-        'wrote_header': r'^(?!On[.\s]*On\s[\s\S]+?wrote:)(' + QUOTED_MATCH_INCLUDE + r'On\s[\s\S]+?\s?wrote:)$',
+        # On\s(?:.+?\s?.+?)\swrote:) – match "On 01.01.2025, John Doe wrote:"
+        #   See multiline_on.txt for example data
+        'wrote_header': r'^(?!On[.\s]*On\s(.+?\s?.+?)\swrote:)(' + QUOTED_MATCH_INCLUDE + r'On\s(?:.+?\s?.+?)\s?wrote:)$',
         # Outlook-style header
         # (?:(?:^|\n)[* ]*(?:From|Sent|To|Subject|Date|Cc):[ *]* – match From:/*From*:, ... headers
         # (?:\s{,2}).*){2,} – allow multi-line headers; some clients split the headers up into multiple lines.
@@ -181,12 +180,15 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         'sent_from': r'Enviado desde mi.*',
     },
     'fr': {
-        # Le\s[\s\S]+?a écrit : – allow multi-line wrap between "Le" and "a écrit :"
-        #   (Outlook/iOS wrap the date line onto a separate line from the "a écrit :")
+        # Le\s(?:.+?\s?.+?)\s?a écrit : same bounded gap as the other languages, so a
+        #   wrapped header (Gmail, Outlook/iOS) still matches: at most three line breaks,
+        #   after "Le", inside the gap and before "a écrit", never a blank line.
+        #   The negative lookahead stays on one line (.), as upstream has it.
+        #   See email_crisp_fr_multiline.txt / email_fr_gmail_wrapped.txt for example data
         # ^...$ anchoring retained from upstream's PR #25 (line-anchoring fix).
-        'wrote_header': r'^(?!Le[\s\S]*Le\s[\s\S]+?a \u00e9crit[a-zA-Z0-9.:;<>()&@\s-]*:)('
+        'wrote_header': r'^(?!Le.*Le\s.+?a \u00e9crit[a-zA-Z0-9.:;<>()&@ -]*:)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'Le\s[\s\S]+?a \u00e9crit[a-zA-Z0-9.:;<>()&@\s-]*:)$',
+                        + r'Le\s(?:.+?\s?.+?)\s?a \u00e9crit[a-zA-Z0-9.:;<>()&@ -]*:)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:De |Envoy\u00e9 |\u00C0 |Objet |  |Cc ):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
@@ -206,9 +208,9 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
     'it': {
         # Accept both "Il <date> ha scritto:" and "In data <date> ha scritto:"
         # (the latter is the phrasing used by some Italian Outlook locales).
-        'wrote_header': r'^(?!(?:Il|In data)[.\s]*(?:Il|In data)\s[\s\S]+?ha scritto:)('
+        'wrote_header': r'^(?!(?:Il|In data)[.\s]*(?:Il|In data)\s(.+?\s?.+?)\sha scritto:)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'(?:Il|In data)\s[\s\S]+?\s?ha scritto:)$',
+                        + r'(?:Il|In data)\s(?:.+?\s?.+?)\s?ha scritto:)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:Da|Inviato|A|Oggetto|Data|Cc):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
