@@ -204,6 +204,14 @@ class EmailMessageTest(unittest.TestCase):
         self.assertTrue("Z powazaniem,\nJan" in mail.replies[1].signatures)
         self.assertTrue("Z powazaniem,\nJan" not in mail.replies[1].body)
 
+    def test_pl_single_label_line_is_not_a_header(self):
+        # A single prose line starting with a Polish header label (here "Data:") is not a header
+        # block; like every other language, two fields are needed. Generated negative guard: the
+        # real-mail corpus has no Polish mail
+        text = 'Czesc Anno,\n\nData: jutro o dziesiatej.\nDo zobaczenia na miejscu.\n\nJan\n'
+        mail = EmailReplyParser(languages=['pl']).read(text)
+        self.assertEqual(text.strip(), mail.latest_reply)
+
     def test_header_begins_w_signature(self):
         mail = self.get_email('begins_with_signature', parse=True, languages=['en'])
         self.assertTrue(mail.replies[0].signatures. startswith("Regards,"))
