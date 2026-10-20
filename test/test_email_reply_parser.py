@@ -541,6 +541,7 @@ class EmailMessageTest(unittest.TestCase):
         # the text is forwarded content like any other forward's, so there is no new text
         mail = self.get_email('email_forward_separator_then_text', parse=True, languages=['en'])
         self.assertEqual('', mail.latest_reply)
+        self.assertEqual(2, len(mail.replies))
         self.assertEqual('---------- Forwarded message ----------', mail.replies[1].headers)
         self.assertTrue(mail.replies[1].body.startswith('Hi I am writing'))
         self.assertTrue(mail.replies[1].body.endswith('Ann Example'))

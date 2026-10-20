@@ -6,7 +6,7 @@ Changes in the Lucidity-Factory fork since upstream 1.36 (`fc44bc8`). `version.p
 
 ### Breaking
 
-- **No new text gives an empty latest reply.** When the plain text starts with a quote header (an attribution, a `From:` or `Od:` block, or a forward separator), `latest_reply` and `parse_reply()` now return `''` and `replies[0]` is an empty reply; the quoted message follows in the next replies. Upstream returned the header and the quote as if they were the reply. A forward gets no special treatment: one with nothing written above its separator also gives `''`. (`d0ae8fe`. An earlier version kept the text after a separator when no header block followed it; that was removed, since on the one real case the text it kept was forwarded content.)
+- **No new text gives an empty latest reply.** When the plain text starts with a quote header (an attribution, a `From:` or `Od:` block, or a forward separator), `latest_reply` and `parse_reply()` now return `''` and `replies[0]` is an empty reply; the quoted message follows in the next replies. Upstream returned the header and the quote as if they were the reply. A forward gets no special treatment: one with nothing written above its separator also gives `''`. (`d0ae8fe`, `fa85a33`) Up to `8d909d0` the text after a leading separator with no header block below it was kept as the latest reply; `fa85a33` removed that exception, since on the one real case it kept forwarded content.
 - **Separators become their own reply.** Gmail and Zoho "Forwarded message" separators and Outlook's underscore line before `From:` are now headers, so such messages have one more entry in `replies`, holding only the separator. `latest_reply` no longer ends with the separator line. (`01899b7`, `8123a81`)
 
 ### Added
