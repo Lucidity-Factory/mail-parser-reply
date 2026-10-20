@@ -18,9 +18,13 @@ OUTLOOK_MAIL_SEPARATOR = r'(\n{2,} ?[_-]{32,})'
 #: Common mail separators (+ old Outlook separator). Covers EN/DA/FR/DE variants
 #: such as "----- Original Message -----", "-------- Oprindelig Besked --------",
 #: "-------- Message d'origine --------", and "-----Ursprüngliche Nachricht-----".
+#: Also forward separators: Gmail's "---------- Forwarded message ---------" and
+#: Zoho's "============ Forwarded Message ============" (matched case-insensitively, so
+#: "----- Forwarded Message -----" and similar variants match too).
 GENERIC_MAIL_SEPARATOR = (
-    r"^-{5,} ?(?:Original Message|Oprindelig Besked|"
-    r"Message d['\u2019]origine|Urspr\u00fcngliche Nachricht) ?-{5,}$"
+    r"^(?:-{5,} ?(?:Original Message|Oprindelig Besked|"
+    r"Message d['\u2019]origine|Urspr\u00fcngliche Nachricht|Forwarded message) ?-{5,}|"
+    r"={5,} ?Forwarded Message ?={5,})$"
 )
 
 #: Outlook Signature defaults; line optionally starts with whitespace, contains two
@@ -51,15 +55,32 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         # <QUOTED_MATCH_INCLUDE> – allow matching this inside quoted levels
         # On\s(?:.+?\s?.+?)\swrote:) – match "On 01.01.2025, John Doe wrote:"
         #   See multiline_on.txt for example data
-        'wrote_header': r'^(?!On[.\s]*On\s(.+?\s?.+?)\swrote:)(' + QUOTED_MATCH_INCLUDE + r'On\s(?:.+?\s?.+?)\s?wrote:)$',
+        # Mail.ru / myMail header: "Monday, 8 June 2026, 10:15PM +01:00 from <addr>:"; the client
+        #   may put its "sent from" advert on the same line first, so the rest of the line before
+        #   the date belongs to the header (at most 200 characters of it). Date, UTC offset,
+        #   " from ", an address (no space around the "@") and the final colon must all be present;
+        #   no other colon may follow " from ", so the match cannot run on into another date.
+        #   See email_mailru_advert_inline.txt / email_mailru_advert_own_line.txt for example data
+        'wrote_header': r'^(?!On[.\s]*On\s(.+?\s?.+?)\swrote:)(' + QUOTED_MATCH_INCLUDE + r'On\s(?:.+?\s?.+?)\s?wrote:)$'
+                        + r'|^(' + QUOTED_MATCH_INCLUDE + r'[^\n]{0,200}?(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day, '
+                        + r'\d{1,2} (?:January|February|March|April|May|June|July|August|September|October|November'
+                        + r'|December) \d{4}, \d{1,2}:\d{2}\s?(?:[AP]M|[ap]\.m\.)? [+-]\d{2}:\d{2} '
+                        + r'from [^\n@:]{0,80}[^\s@:]@[^\s@:][^\n:]{0,120}:)$',
         # Outlook-style header
         # (?:(?:^|\n)[* ]*(?:From|Sent|To|Subject|Date|Cc):[ *]* – match From:/*From*:, ... headers
         # (?:\s{,2}).*){2,} – allow multi-line headers; some clients split the headers up into multiple lines.
         #       Also require at least two occurrences of the above pattern; e.g. From: ...\n Sent: ...
         # (?:\n.*){,1} – allow optional subject or other broken multi-line at the end
+        # Second alternative: some webmail clients put a blank line between the fields. Only a
+        #   block that starts with "From:" on a line holding an "@" and has at least two more
+        #   fields, each after one blank line, counts; the labels are case-sensitive here, so prose
+        #   or signature lines with these words are left alone. EN only, as only English clients
+        #   have been seen doing this. See email_headers_blank_separated.txt
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
-                       + r')[* ]*(?:From|Sent|To|Subject|Date|Cc|Organization):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
+                       + r')[* ]*(?:From|Sent|To|Subject|Date|Cc|Organization):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})'
+                       + r'|((?:^|\n)[* ]*(?-i:From):[ *]*[^\n@]*@.*'
+                       + r'(?:\n\n[* ]*(?-i:Sent|To|Subject|Date|Cc):[ *]*.*){2,})',
         'disclaimers': [
             'CAUTION:',
             'Disclaimer:',

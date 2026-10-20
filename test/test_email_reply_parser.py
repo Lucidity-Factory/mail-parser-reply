@@ -386,6 +386,81 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual("Hei Ben,\n\nKiitos, torstai sopii hyvin.\n\nAnn", mail.latest_reply)
         self.assertTrue(mail.replies[1].headers.startswith('ma 8.6.2026 klo 9.15'))
 
+    def test_mailru_advert_inline(self):
+        # Mail.ru / myMail puts its "sent from" advert and the header on one line after the
+        # "---" line of the signature; the whole line is the header, so "---" stays in the reply
+        mail = self.get_email('email_mailru_advert_inline', parse=True, languages=['en'])
+        self.assertEqual(
+            "Hi Ben,\n\nYes, please send the receipt to my new address.\n\nKind regards,\nAnn Example\n"
+            "ann@customer.example\n---",
+            mail.latest_reply
+        )
+        self.assertEqual(
+            "Download myMail and read your mail and files on the go @mail.example! Thursday, 11 June 2026, "
+            "10:15p.m. +01:00 from charitysupportdesk help@charity.example:",
+            mail.replies[1].headers
+        )
+
+    def test_mailru_advert_own_line(self):
+        # Same client with the advert on its own line before a blank line: the advert stays in the reply
+        # ("ben@charity" without a dot mirrors the real header, which repeats the address that way)
+        mail = self.get_email('email_mailru_advert_own_line', parse=True, languages=['en'])
+        self.assertEqual(
+            "Hi Ben,\n\nThursday works for me.\n\n--\nBest regards,\nAnn Example\nann@customer.example\n---\n"
+            "Download myMail (link) and read your mail and files on the go @mail.example!",
+            mail.latest_reply
+        )
+        self.assertTrue(mail.replies[1].headers.startswith('Wednesday, 10 June 2026, 10:15PM +01:00 from'))
+
+    def test_mailru_header_needs_address(self):
+        # Prose with the same date shape and an "@" that is not part of an address is not a header
+        text = 'Hi,\nWe met on Monday, 8 June 2026, 10:15 PM +01:00 from the office @ Leeds:\nIt went well.\n'
+        mail = EmailReplyParser(languages=['en']).read(text)
+        self.assertEqual(text.strip(), mail.latest_reply)
+
+    def test_mailru_header_runtime_many_dates_on_one_line(self):
+        # Regression guard: an unbounded line prefix and tail made this roughly cubic (20 KB on one
+        # line took about 5 s). Generated input: this pins run time, not pattern coverage.
+        text = 'Hi\n' + 'Monday, 1 June 2026, 10:15 +01:00 from a@b, c: d, ' * 400 + '\n'
+        start = time.monotonic()
+        mail = EmailReplyParser(languages=['en']).read(text)
+        self.assertLess(time.monotonic() - start, 1.0)
+        self.assertEqual(text.strip(), mail.latest_reply)
+
+    def test_headers_blank_separated(self):
+        # Webmail that puts a blank line between From:, Sent:, To: and Subject:
+        mail = self.get_email('email_headers_blank_separated', parse=True, languages=['en'])
+        self.assertEqual("Hi Ben,\n\nThat is correct, thank you.\n\nAnn", mail.latest_reply)
+        self.assertEqual(
+            "From: Charity Support Team <help@charity.example>\n\nSent: 10 June 2026 10:15:00 BST\n\n"
+            "To: Ann Example <ann@customer.example>\n\nSubject: Re: Your receipt",
+            mail.replies[1].headers
+        )
+
+    def test_headers_blank_separated_needs_from_address(self):
+        # Prose lines that happen to start with these labels, one blank line apart, are not a header
+        text = 'Hi\n\nFrom: 9am\n\nTo: 5pm\n\nDate: Monday\n\nbye\n'
+        mail = EmailReplyParser(languages=['en']).read(text)
+        self.assertEqual(text.strip(), mail.latest_reply)
+
+    def test_crisp_forward_header(self):
+        # Gmail "---------- Forwarded message ---------" separator; fixture ported verbatim from
+        # crisp-oss/email-reply-parser (email_tricky_17_forward_header.txt, 0b3704c)
+        mail = self.get_email('email_crisp_forward_header', parse=True, languages=['en'])
+        self.assertEqual("See the forwarded message below.", mail.latest_reply)
+        self.assertEqual(3, len(mail.replies))
+        self.assertEqual('---------- Forwarded message ---------', mail.replies[1].headers)
+
+    def test_zoho_forwarded_separator(self):
+        # Zoho "============ Forwarded Message ============" separator. Only the separator lines
+        # are matched (opening and closing); the "From :" fields with a space before the colon
+        # are not headers and stay in the content of the second reply
+        mail = self.get_email('email_zoho_forwarded_separator', parse=True, languages=['en'])
+        self.assertEqual("Hi Ben,\n\nPlease see the message below.\n\nAnn", mail.latest_reply)
+        self.assertEqual(3, len(mail.replies))
+        self.assertEqual('============ Forwarded Message ============', mail.replies[1].headers)
+        self.assertTrue(mail.replies[1].content.startswith('============ Forwarded Message ============\nFrom :'))
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt', encoding='utf-8') as f:
