@@ -1,0 +1,17 @@
+Hi Ben,
+
+Please see the message below.
+
+Ann
+
+
+============ Forwarded Message ============
+From : Charity Support Team <help@charity.example>
+To : "Ann Example" <ann@customer.example>
+Date : Wed, 10 Jun 2026 10:15:00 +0100
+Subject : Your receipt
+============ Forwarded Message ============
+
+Dear Ann,
+
+Thank you for your donation.
