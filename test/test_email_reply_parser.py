@@ -386,6 +386,20 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual("Hei Ben,\n\nKiitos, torstai sopii hyvin.\n\nAnn", mail.latest_reply)
         self.assertTrue(mail.replies[1].headers.startswith('ma 8.6.2026 klo 9.15'))
 
+    def test_wrote_header_runtime_long_line_with_start_word(self):
+        # Regression: the shared gap was two adjacent lazy runs (.+?\s?.+?), so one long line
+        # starting with a start word (or, for de and sv, a long line after the verb) took about
+        # 2 s per 12 KB to reject; the negative lookaheads did the same for a line starting
+        # with the start word twice. Generated input: this pins run time, not pattern coverage.
+        for language, start in [('en', 'On'), ('cs', 'Dne'), ('fi', 'ma 1'), ('fr', 'Le'), ('it', 'Il'),
+                                ('nl', 'Op'), ('pl', 'Dnia'), ('pt', 'Em'), ('de', 'Am x schrieb'),
+                                ('sv', 'Den skrev'), ('en', 'On on'), ('nl', 'Op\nOp')]:
+            text = 'Hi\n\n' + start + ' ' + 'word ' * 4800
+            started = time.monotonic()
+            mail = EmailReplyParser(languages=[language]).read(text)
+            self.assertLess(time.monotonic() - started, 1.0, language)
+            self.assertEqual(text.strip(), mail.latest_reply, language)
+
     def test_mailru_advert_inline(self):
         # Mail.ru / myMail puts its "sent from" advert and the header on one line after the
         # "---" line of the signature; the whole line is the header, so "---" stays in the reply

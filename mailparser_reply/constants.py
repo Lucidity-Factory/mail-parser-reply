@@ -11,6 +11,11 @@ QUOTED_REMOVAL_REGEX = r'^(> *)'
 #: Allow to match within (multi)-quoted body
 #: e.g. allowing regex to match *inside* lines starting with "> > ..."
 QUOTED_MATCH_INCLUDE = r'(?:> ?)*'
+#: Gap between a quote header's start word and its verb, e.g. "On" ... "wrote:": at least two
+#: characters on at most two lines, never a blank line. Written so that each text has one way to
+#: match: two adjacent lazy runs (.+?\s?.+?) made a long line starting with the start word
+#: quadratic to reject (for de and sv, a long line after the verb).
+WRAPPED_GAP = r'(?:[^\n](?:[^\n]*\n)??[^\n]+?)'
 
 #: Outlook-style mail separator (32 underscores); also occasionally
 #: used within signatures
@@ -58,7 +63,7 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         # ^(?!On[.\s]*On\s(.+?\s?.+?)\swrote:) – Negative lookahead, see:
         #    https://github.com/github/email_reply_parser/pull/31
         # <QUOTED_MATCH_INCLUDE> – allow matching this inside quoted levels
-        # On\s(?:.+?\s?.+?)\swrote:) – match "On 01.01.2025, John Doe wrote:"
+        # On\s<WRAPPED_GAP>\s?wrote: – match "On 01.01.2025, John Doe wrote:"
         #   See multiline_on.txt for example data
         # Mail.ru / myMail header: "Monday, 8 June 2026, 10:15PM +01:00 from <addr>:"; the client
         #   may put its "sent from" advert on the same line first, so the rest of the line before
@@ -66,7 +71,7 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         #   " from ", an address (no space around the "@") and the final colon must all be present;
         #   no other colon may follow " from ", so the match cannot run on into another date.
         #   See email_mailru_advert_inline.txt / email_mailru_advert_own_line.txt for example data
-        'wrote_header': r'^(?!On[.\s]*On\s(.+?\s?.+?)\swrote:)(' + QUOTED_MATCH_INCLUDE + r'On\s(?:.+?\s?.+?)\s?wrote:)$'
+        'wrote_header': r'^(?!On[.\s]*On\s(' + WRAPPED_GAP + r')\swrote:)(' + QUOTED_MATCH_INCLUDE + r'On\s' + WRAPPED_GAP + r'\s?wrote:)$'
                         + r'|^(' + QUOTED_MATCH_INCLUDE + r'[^\n]{0,200}?(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day, '
                         + r'\d{1,2} (?:January|February|March|April|May|June|July|August|September|October|November'
                         + r'|December) \d{4}, \d{1,2}:\d{2}\s?(?:[AP]M|[ap]\.m\.)? [+-]\d{2}:\d{2} '
@@ -113,7 +118,7 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
     'de': {
         'wrote_header': r'^(?!Am.*Am\s.+?schrieb.*:)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'Am\s(?:.+?\s?)schrieb\s(?:.+?\s?.+?):)$',
+                        + r'Am\s(?:.+?\s?)schrieb\s' + WRAPPED_GAP + r':)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:Von|Gesendet|An|Betreff|Datum|Cc|Organisation):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
@@ -133,9 +138,9 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         'sent_from': 'Gesendet von',
     },
     'cs': {
-        'wrote_header': r'^(?!Dne[.\s]*Dne\s(.+?\s?.+?)\snapsal\(a\):)('
+        'wrote_header': r'^(?!Dne[.\s]*Dne\s(' + WRAPPED_GAP + r')\snapsal\(a\):)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'Dne\s(?:.+?\s?.+?)\s?napsal\(a\):)$',
+                        + r'Dne\s' + WRAPPED_GAP + r'\s?napsal\(a\):)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:Od|Odesláno|Komu|Předmět|Datum|Kopie):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
@@ -209,13 +214,13 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         # Finnish: "<weekday abbr> <day>. <month> <year> klo <time> <name> <email> kirjoitti:"
         # Example: "pe 20. lokakuuta 2017 klo 17.50 John Coe <j@x.com> kirjoitti:"
         # The leading "\w{2,4}\s\d" matches "pe 20", "ma 1", "ke 12", etc.
-        # (?:.+?\s?.+?)\s?kirjoitti: bounded gap shared with the other languages: Gmail
+        # <WRAPPED_GAP>\s?kirjoitti: bounded gap shared with the other languages: Gmail
         #   wraps the header inside the address, which the gap allows (at most three line
         #   breaks, never a blank line), so a nested older header cannot be reached and
         #   no negative lookahead is needed. See email_fi_gmail_nested.txt
         'wrote_header': r'^('
                         + QUOTED_MATCH_INCLUDE
-                        + r'\w{2,4}\s\d(?:.+?\s?.+?)\s?kirjoitti:)$',
+                        + r'\w{2,4}\s\d' + WRAPPED_GAP + r'\s?kirjoitti:)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:L\u00e4hett\u00e4j\u00e4|L\u00e4hetetty|Vastaanottaja|Aihe|P\u00e4iv\u00e4m\u00e4\u00e4r\u00e4):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
@@ -228,7 +233,7 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         'sent_from': r'L\u00e4hetetty',
     },
     'fr': {
-        # Le\s(?:.+?\s?.+?)\s?a écrit : same bounded gap as the other languages, so a
+        # Le\s<WRAPPED_GAP>\s?a écrit : same bounded gap as the other languages, so a
         #   wrapped header (Gmail, Outlook/iOS) still matches: at most three line breaks,
         #   after "Le", inside the gap and before "a écrit", never a blank line.
         #   The negative lookahead stays on one line (.), as upstream has it.
@@ -236,7 +241,7 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         # ^...$ anchoring retained from upstream's PR #25 (line-anchoring fix).
         'wrote_header': r'^(?!Le.*Le\s.+?a \u00e9crit[a-zA-Z0-9.:;<>()&@ -]*:)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'Le\s(?:.+?\s?.+?)\s?a \u00e9crit[a-zA-Z0-9.:;<>()&@ -]*:)$',
+                        + r'Le\s' + WRAPPED_GAP + r'\s?a \u00e9crit[a-zA-Z0-9.:;<>()&@ -]*:)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:De |Envoy\u00e9 |\u00C0 |Objet |  |Cc ):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
@@ -256,9 +261,9 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
     'it': {
         # Accept both "Il <date> ha scritto:" and "In data <date> ha scritto:"
         # (the latter is the phrasing used by some Italian Outlook locales).
-        'wrote_header': r'^(?!(?:Il|In data)[.\s]*(?:Il|In data)\s(.+?\s?.+?)\sha scritto:)('
+        'wrote_header': r'^(?!(?:Il|In data)[.\s]*(?:Il|In data)\s(' + WRAPPED_GAP + r')\sha scritto:)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'(?:Il|In data)\s(?:.+?\s?.+?)\s?ha scritto:)$',
+                        + r'(?:Il|In data)\s' + WRAPPED_GAP + r'\s?ha scritto:)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:Da|Inviato|A|Oggetto|Data|Cc):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
@@ -300,9 +305,9 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         'sent_from': r'내 .*에서 보냄',
     },
     'nl': {
-        'wrote_header': r'^(?!Op[.\s]*Op\s(.+?\s?.+?)\sschreef:)('
+        'wrote_header': r'^(?!Op[.\s]*Op\s(' + WRAPPED_GAP + r')\sschreef:)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'Op\s(?:.+?\s?.+?)\s?schreef:)$',
+                        + r'Op\s' + WRAPPED_GAP + r'\s?schreef:)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:Van|Verzonden|Aan|Onderwerp|Datum|Cc):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
@@ -319,9 +324,9 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         'sent_from': 'Verzonden vanaf mijn',
     },
     'pl': {
-        'wrote_header': r'^(?!Dnia[.\s]*Dnia\s(.+?\s?.+?)\s(?:nadesłał|napisał\(a\)):)('
+        'wrote_header': r'^(?!Dnia[.\s]*Dnia\s(' + WRAPPED_GAP + r')\s(?:nadesłał|napisał\(a\)):)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'Dnia\s(?:.+?\s?.+?)\s?(?:nadesłał|napisał\(a\)):)$',
+                        + r'Dnia\s' + WRAPPED_GAP + r'\s?(?:nadesłał|napisał\(a\)):)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:Od|Wysłano|Do|Temat|Data|DW):[ *]*(?:\s{,2}).*){1,}(?:\n.*){,1})',
@@ -341,9 +346,9 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         #   bounded gap shared with the other languages (at most three line breaks, never
         #   a blank line).
         # Example: "Em 10 de julho de 2017 às 16:32:35, John Doe (a@b.com) escreveu:"
-        'wrote_header': r'^(?!Em[.\s]*Em\s(.+?\s?.+?)\sescreveu:)('
+        'wrote_header': r'^(?!Em[.\s]*Em\s(' + WRAPPED_GAP + r')\sescreveu:)('
                         + QUOTED_MATCH_INCLUDE
-                        + r'Em\s(?:.+?\s?.+?)\s?escreveu:)$',
+                        + r'Em\s' + WRAPPED_GAP + r'\s?escreveu:)$',
         'from_header': r'((?:(?:^|\n|\n'
                        + QUOTED_MATCH_INCLUDE
                        + r')[* ]*(?:De|Enviado|Para|Assunto|Data|CC):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
@@ -357,9 +362,9 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         'sent_from': 'Enviado do meu',
     },
     'sv': {
-        'wrote_header': r"^(?!Den[.\s]*Den\s(.+?\s?.+?)\skrev:)("
+        'wrote_header': r"^(?!Den[.\s]*Den\s(" + WRAPPED_GAP + r")\skrev:)("
                         + QUOTED_MATCH_INCLUDE
-                        + r"(?:Den|[Mm]ån|[Tt]is|[Oo]ns|[Tt]or|[Ff]re|[Ll]ör|[Ss]ön|(?:[0-9]+\s+(?:jan|feb|mar|apr|maj|jun|jul|aug|sep|okt|nov|dec)))[^\n]*skrev\s(?:.+?\s?.+?):)$",
+                        + r"(?:Den|[Mm]ån|[Tt]is|[Oo]ns|[Tt]or|[Ff]re|[Ll]ör|[Ss]ön|(?:[0-9]+\s+(?:jan|feb|mar|apr|maj|jun|jul|aug|sep|okt|nov|dec)))[^\n]*skrev\s" + WRAPPED_GAP + r":)$",
         'disclaimers': [
             'Varning:',
             'Observera:',
