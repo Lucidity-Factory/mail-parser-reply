@@ -365,6 +365,27 @@ class EmailMessageTest(unittest.TestCase):
         self.assertLess(time.monotonic() - start, 1.0)
         self.assertEqual(text.strip(), mail.latest_reply)
 
+    def test_portuguese_quoted_reply(self):
+        mail = self.get_email('email_crisp_pt', parse=True, languages=['pt'])
+        self.assertEqual(2, len(mail.replies))
+        self.assertIn("Fusce bibendum", mail.replies[0].body)
+        self.assertIn("escreveu:", mail.replies[1].headers)
+        self.assertIn("Hi there!", mail.replies[1].body)
+
+    def test_finnish_quoted_reply(self):
+        mail = self.get_email('email_crisp_fi', parse=True, languages=['fi'])
+        self.assertEqual(2, len(mail.replies))
+        self.assertIn("Fusce bibendum", mail.replies[0].body)
+        self.assertIn("kirjoitti:", mail.replies[1].headers)
+        self.assertIn("Thanks!", mail.replies[1].body)
+
+    def test_finnish_gmail_nested(self):
+        # Regression: an older Finnish header further down the quote must not stop
+        # the top (wrapped) header from matching
+        mail = self.get_email('email_fi_gmail_nested', parse=True, languages=['fi'])
+        self.assertEqual("Hei Ben,\n\nKiitos, torstai sopii hyvin.\n\nAnn", mail.latest_reply)
+        self.assertTrue(mail.replies[1].headers.startswith('ma 8.6.2026 klo 9.15'))
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt', encoding='utf-8') as f:

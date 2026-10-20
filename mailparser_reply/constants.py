@@ -179,6 +179,28 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         ],
         'sent_from': r'Enviado desde mi.*',
     },
+    'fi': {
+        # Finnish: "<weekday abbr> <day>. <month> <year> klo <time> <name> <email> kirjoitti:"
+        # Example: "pe 20. lokakuuta 2017 klo 17.50 John Coe <j@x.com> kirjoitti:"
+        # The leading "\w{2,4}\s\d" matches "pe 20", "ma 1", "ke 12", etc.
+        # (?:.+?\s?.+?)\s?kirjoitti: bounded gap shared with the other languages: Gmail
+        #   wraps the header inside the address, which the gap allows (at most three line
+        #   breaks, never a blank line), so a nested older header cannot be reached and
+        #   no negative lookahead is needed. See email_fi_gmail_nested.txt
+        'wrote_header': r'^('
+                        + QUOTED_MATCH_INCLUDE
+                        + r'\w{2,4}\s\d(?:.+?\s?.+?)\s?kirjoitti:)$',
+        'from_header': r'((?:(?:^|\n|\n'
+                       + QUOTED_MATCH_INCLUDE
+                       + r')[* ]*(?:L\u00e4hett\u00e4j\u00e4|L\u00e4hetetty|Vastaanottaja|Aihe|P\u00e4iv\u00e4m\u00e4\u00e4r\u00e4):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
+        'disclaimers': [],
+        'signatures': [
+            r'Yst\u00e4v\u00e4llisin terveisin',
+            'Parhain terveisin',
+            'Terveisin',
+        ],
+        'sent_from': r'L\u00e4hetetty',
+    },
     'fr': {
         # Le\s(?:.+?\s?.+?)\s?a écrit : same bounded gap as the other languages, so a
         #   wrapped header (Gmail, Outlook/iOS) still matches: at most three line breaks,
@@ -287,6 +309,26 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
             'W przypadku niejasności, proszę o kontakt.'
         ],
         'sent_from': 'Wysłano z'
+    },
+    'pt': {
+        # Portuguese: "Em <date>, <name> <email> escreveu:"; the header can wrap within the
+        #   bounded gap shared with the other languages (at most three line breaks, never
+        #   a blank line).
+        # Example: "Em 10 de julho de 2017 às 16:32:35, John Doe (a@b.com) escreveu:"
+        'wrote_header': r'^(?!Em[.\s]*Em\s(.+?\s?.+?)\sescreveu:)('
+                        + QUOTED_MATCH_INCLUDE
+                        + r'Em\s(?:.+?\s?.+?)\s?escreveu:)$',
+        'from_header': r'((?:(?:^|\n|\n'
+                       + QUOTED_MATCH_INCLUDE
+                       + r')[* ]*(?:De|Enviado|Para|Assunto|Data|CC):[ *]*(?:\s{,2}).*){2,}(?:\n.*){,1})',
+        'disclaimers': [],
+        'signatures': [
+            'Atenciosamente',
+            'Cumprimentos',
+            r'Abra\u00e7os',
+            'Obrigado',
+        ],
+        'sent_from': 'Enviado do meu',
     },
     'sv': {
         'wrote_header': r"^(?!Den[.\s]*Den\s(.+?\s?.+?)\skrev:)("
