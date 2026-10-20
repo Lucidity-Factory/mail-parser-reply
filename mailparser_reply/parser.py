@@ -67,6 +67,7 @@ class EmailMessage:
     _header_regex: Union[Pattern, None] = None
     _disclaimers_regex: Union[Pattern, None] = None
     _signature_regex: Union[Pattern, None] = None
+    _signature_start_regex: Union[Pattern, None] = None
 
     def __post_init__(self):
         if self.include_english and 'en' not in self.languages:
@@ -145,12 +146,14 @@ class EmailMessage:
         #   3) Get Outlook for... / Sent from Outlook for iOS<https://greed.com">
         #   4) Regular signature-indicating stuff; e.g. "Best regards, ..."
         # TODO: Add quotation as optional matching
-        self._signature_regex = re.compile(
-            fr'(({signature_regex}|{OUTLOOK_MAIL_SEPARATOR}|' +   # 1)
+        signature_start = (
+            fr'({signature_regex}|{OUTLOOK_MAIL_SEPARATOR}|' +   # 1)
             fr'\s*^{QUOTED_MATCH_INCLUDE}(?:{sent_from_regex}) ?(?:(?:[\w.<>:// ]+)|(?:\w+ ){1,3})$|'+  # 2) + 3)
-            fr'(?<!\A)^{QUOTED_MATCH_INCLUDE}(?:{signatures}))(.|\s)*)',  # 4)
-            flags=re.MULTILINE | re.IGNORECASE
+            fr'(?<!\A)^{QUOTED_MATCH_INCLUDE}(?:{signatures}))'  # 4)
         )
+        self._signature_regex = re.compile(fr'({signature_start}(.|\s)*)', flags=re.MULTILINE | re.IGNORECASE)
+        # Same alternatives without the run to the end of the text, to find where a signature starts
+        self._signature_start_regex = re.compile(signature_start, flags=re.MULTILINE | re.IGNORECASE)
         logger.debug(f'Mail Signature RegEx: "{self._signature_regex.pattern!r}"')
 
         # TODO: Always match whole signature until the next fragment/regex or until end of text
@@ -171,8 +174,34 @@ class EmailMessage:
     def _process_signatures_disclaimers(self, text: str) -> Tuple[List[str], str]:
         """ Identifies Signature Elements and Disclaimers """
         disclaimers = self.DISCLAIMERS_REGEX.findall(text)
-        signatures = self.SIGNATURE_REGEX.search(text)
-        return disclaimers, signatures.group() if signatures else ''
+        return disclaimers, self._find_signature(text)
+
+    def _find_signature(self, text: str) -> str:
+        """ The signature is the text from the first signature start to the end of the text, except
+         that a hyphen line directly followed by another hyphen line is a list in the new text, not
+         a "-John" style signature: the run of hyphen lines is skipped and the search goes on after
+         it """
+        signature_regex = self.SIGNATURE_REGEX
+        if self._signature_start_regex is None:
+            # SIGNATURE_REGEX was set from outside: use it as it is
+            match = signature_regex.search(text)
+            return match.group() if match else ''
+        hyphen_line = re.compile(fr'{QUOTED_MATCH_INCLUDE}- ?\w')
+        position = 0
+        while True:
+            match = self._signature_start_regex.search(text, position)
+            if not match:
+                return ''
+            start = match.start() + len(match.group()) - len(match.group().lstrip())
+            line_end = text.find('\n', start)
+            line_end = len(text) if line_end < 0 else line_end
+            if hyphen_line.match(text, start) and hyphen_line.match(text, line_end + 1):
+                while start < len(text) and hyphen_line.match(text, start):
+                    line_end = text.find('\n', start)
+                    start = len(text) if line_end < 0 else line_end + 1
+                position = start
+                continue
+            return text[match.start():]
 
     def read(self):
         """ Processes mail text body, splitting it up in distinct, digestible EmailReplies

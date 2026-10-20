@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import time
 import unittest
@@ -541,6 +542,37 @@ class EmailMessageTest(unittest.TestCase):
         mail = self.get_email('email_forward_separator_then_text', parse=True, languages=['en'])
         self.assertTrue(mail.latest_reply.startswith('---------- Forwarded message ----------\nHi I am writing'))
         self.assertTrue(mail.latest_reply.endswith('Ann Example'))
+
+    def test_sig_hyphen_list_is_body(self):
+        # A hyphen list in the new text is not a "-John" style signature; the sign-off below it is
+        mail = self.get_email('email_sig_hyphen_list', parse=True, languages=['en'])
+        self.assertTrue('- Two volunteers for the welcome desk from 10:00' in mail.replies[0].body)
+        self.assertTrue('To pay the stall fee' in mail.replies[0].body)
+        self.assertEqual('Best,\nAnna', mail.replies[0].signatures)
+
+    def test_sig_hyphen_list_items_only_is_body(self):
+        mail = self.get_email('email_sig_hyphen_list_items_only', parse=True, languages=['en'])
+        self.assertEqual('', mail.replies[0].signatures)
+        self.assertTrue('Let me know which one suits.' in mail.replies[0].body)
+
+    def test_sig_hyphen_list_guards(self):
+        # Generated guards: a quoted list is skipped like an unquoted one; a "-John" line after a
+        # blank line below a list is still a signature; a preset SIGNATURE_REGEX is used as it is
+        cases = [
+            ('Hi\n> - a\n> - b\n> ok\n', ''),
+            ('Hi\n- a\n- b\n\n-John\n', '-John'),
+        ]
+        for text, signature in cases:
+            mail = EmailReplyParser(languages=['en']).read(text)
+            self.assertEqual(signature, mail.replies[0].signatures, text)
+        mail = EmailMessage(text='Hi\n- a\n- b\n', languages=['en'], _signature_regex=re.compile(r'- a(.|\s)*')).read()
+        self.assertEqual('- a\n- b', mail.replies[0].signatures)
+
+    def test_bullets_are_not_a_signature(self):
+        # Upstream fixture: the two bullets at the end of the reply used to be taken for a signature
+        mail = self.get_email('email_bullets', parse=True, languages=['en'])
+        self.assertEqual('', mail.replies[0].signatures)
+        self.assertTrue('- how about bullets\n- and another' in mail.replies[0].body)
 
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
