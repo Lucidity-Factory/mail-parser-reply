@@ -589,6 +589,13 @@ class EmailMessageTest(unittest.TestCase):
         text = 'Hi\n\n-- On my way, I wrote --\n\nmore text\n'
         self.assertEqual(text.strip(), EmailReplyParser(languages=['en']).read(text).latest_reply)
 
+    def test_normalize_every_separator_after_blank_line(self):
+        # Regression: re.MULTILINE was passed as re.sub's count argument, so only the first 8
+        # underscore lines after a blank line were normalised. Generated input
+        text = ''.join(f'Part {i}\n\n' + '_' * 32 + '\n' for i in range(12))
+        mail = EmailMessage(text=text, languages=['en'])
+        self.assertTrue('_' * 32 not in mail.text)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt', encoding='utf-8') as f:
