@@ -85,10 +85,10 @@ class EmailMessageTest(unittest.TestCase):
 
     def test_simple_quoted_reply(self):
         mail = self.get_email('email_1_8', parse=True, languages=['en'])
-        # TODO: Should this *actually* be the desired behaviour? tbh, nobody sends mails including this header tho
-        #   Maybe otherwise: 1) Negative lookahead unquoted message
-        #                    2) Unless message is disclaimer/signature (scan from behind)
-        self.assertEqual(2, len(mail.replies))
+        # The mail starts with the quote header, so it has no new text: the latest reply is empty
+        # and the quoted message is replies[1] (this used to return the quote as the latest reply)
+        self.assertEqual(3, len(mail.replies))
+        self.assertEqual('', mail.latest_reply)
         # self.assertTrue("--\nHey there, this is my signature" == mail.replies[1].signatures)
 
     def test_gmail_header(self):
@@ -111,7 +111,9 @@ class EmailMessageTest(unittest.TestCase):
 
     def test_multiline_on(self):
         mail = self.get_email('multiline_on', parse=True, languages=['en', 'de'])
-        self.assertEqual(4, len(mail.replies))
+        # Starts with a header: an empty latest reply, then the four quoted parts
+        self.assertEqual(5, len(mail.replies))
+        self.assertEqual('', mail.latest_reply)
 
     def test_header_no_delimiter(self):
         mail = self.get_email('email_headers_no_delimiter', parse=True, languages=['en',])
@@ -176,25 +178,31 @@ class EmailMessageTest(unittest.TestCase):
 
     def test_pl_simple_body(self):
         mail = self.get_email('email_pl_1_1', parse=True, languages=['pl'])
-        self.assertEqual(1, len(mail.replies))
-        self.assertTrue("Czesc Anno" in mail.replies[0].body)
-        self.assertTrue("Pozdrawiam,\nJan" in mail.replies[0].signatures)
-        self.assertTrue("Pozdrawiam,\nJan" not in mail.replies[0].body)
+        # Starts with an "Od:" header block: an empty latest reply, then the message
+        self.assertEqual(2, len(mail.replies))
+        self.assertEqual('', mail.latest_reply)
+        self.assertTrue("Czesc Anno" in mail.replies[1].body)
+        self.assertTrue("Pozdrawiam,\nJan" in mail.replies[1].signatures)
+        self.assertTrue("Pozdrawiam,\nJan" not in mail.replies[1].body)
 
     def test_pl_simple_quoted_reply(self):
         mail = self.get_email('email_pl_1_2', parse=True, languages=['pl'])
-        self.assertEqual(2, len(mail.replies))
-        self.assertTrue("Dnia 28 lutego 2023 14:00 Anna Nowak <anna.nowak@example.com>" in mail.replies[1].content)
-        self.assertTrue("Dnia 28 lutego 2023 14:00 Anna Nowak <anna.nowak@example.com>" not in mail.replies[1].body)
-        self.assertTrue("> Pozdrawiam," in mail.replies[1].content)
-        self.assertTrue("> Pozdrawiam," in mail.replies[1].signatures)
-        self.assertTrue("> Pozdrawiam," not in mail.replies[1].body)
+        # Starts with an "Od:" header block: an empty latest reply, then the message and its quote
+        self.assertEqual(3, len(mail.replies))
+        self.assertEqual('', mail.latest_reply)
+        self.assertTrue("Dnia 28 lutego 2023 14:00 Anna Nowak <anna.nowak@example.com>" in mail.replies[2].content)
+        self.assertTrue("Dnia 28 lutego 2023 14:00 Anna Nowak <anna.nowak@example.com>" not in mail.replies[2].body)
+        self.assertTrue("> Pozdrawiam," in mail.replies[2].content)
+        self.assertTrue("> Pozdrawiam," in mail.replies[2].signatures)
+        self.assertTrue("> Pozdrawiam," not in mail.replies[2].body)
 
     def test_pl_simple_signature(self):
         mail = self.get_email('email_pl_1_3', parse=True, languages=['pl'])
-        self.assertEqual(1, len(mail.replies))
-        self.assertTrue("Z powazaniem,\nJan" in mail.replies[0].signatures)
-        self.assertTrue("Z powazaniem,\nJan" not in mail.replies[0].body)
+        # Starts with an "Od:" header block: an empty latest reply, then the message
+        self.assertEqual(2, len(mail.replies))
+        self.assertEqual('', mail.latest_reply)
+        self.assertTrue("Z powazaniem,\nJan" in mail.replies[1].signatures)
+        self.assertTrue("Z powazaniem,\nJan" not in mail.replies[1].body)
 
     def test_header_begins_w_signature(self):
         mail = self.get_email('begins_with_signature', parse=True, languages=['en'])
@@ -503,6 +511,28 @@ class EmailMessageTest(unittest.TestCase):
                 '\nFrom: Ben <ben@charity.example>\nSent: Monday\nTo: Ann\nSubject: Hello\n\nHi Ann\n')
         mail = EmailReplyParser(languages=['en']).read(text)
         self.assertEqual('Thanks\n\nAnn\n' + '_' * 40 + '\nAcme Ltd, 1 High St\n\nOne more thing.', mail.latest_reply)
+
+    def test_no_new_text(self):
+        # The plain part starts with the quote header (the new text was only an image): the
+        # latest reply is empty and the quote is the next reply
+        mail = self.get_email('email_no_new_text', parse=True, languages=['en'])
+        self.assertEqual('', mail.latest_reply)
+        self.assertEqual('', mail.replies[0].content)
+        self.assertTrue(mail.replies[1].headers.startswith('On Wed, 10 Jun 2026 at 10:15, Ben Sample'))
+
+    def test_forward_only(self):
+        # A Gmail forward with no text of its own: separator, then the forwarded header block
+        mail = self.get_email('email_forward_only', parse=True, languages=['en'])
+        self.assertEqual('', mail.latest_reply)
+        self.assertEqual('---------- Forwarded message ---------', mail.replies[1].headers)
+        self.assertTrue(mail.replies[2].headers.startswith('From: Ben Sample <ben@charity.example>'))
+
+    def test_forward_separator_then_text(self):
+        # A forward separator with the sender's own text directly under it and no header block
+        # (seen from Yahoo): that text is the new text, not a quote
+        mail = self.get_email('email_forward_separator_then_text', parse=True, languages=['en'])
+        self.assertTrue(mail.latest_reply.startswith('---------- Forwarded message ----------\nHi I am writing'))
+        self.assertTrue(mail.latest_reply.endswith('Ann Example'))
 
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """

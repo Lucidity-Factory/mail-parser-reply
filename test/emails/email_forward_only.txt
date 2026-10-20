@@ -1,0 +1,11 @@
+---------- Forwarded message ---------
+From: Ben Sample <ben@charity.example>
+Date: Wed, 10 Jun 2026 at 10:15
+Subject: Open day
+To: <ann@customer.example>
+
+Hi Ann,
+
+The open day starts at ten.
+
+Ben

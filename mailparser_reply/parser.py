@@ -203,7 +203,9 @@ class EmailMessage:
             )
             current_position = position if position >= 0 else 0
             previous_header = header
-            if not _reply.content: continue
+            # An empty fragment between two headers is dropped, but an empty first fragment is
+            # kept: the text starts with a header, so there is no new text and latest_reply is ''
+            if not _reply.content and _reply.headers: continue
             self.replies.append(_reply)
 
         # Add last reply element that is otherwise skipped due to the way we're iterating over headers.
@@ -216,6 +218,16 @@ class EmailMessage:
             disclaimers=disclaimers
         )
         self.replies.append(_reply)
+
+        # Exception: when the text starts with a separator line whose fragment holds more than that
+        # line (text follows it before any other header; some clients start a forward of the
+        # sender's own text this way), the separator does not introduce a quote and that text is
+        # the new text after all. Only dashed and "=" separators can match here: the Outlook
+        # underscore alternative needs the next "From:" line, which the header string lacks.
+        if len(self.replies) > 1 and not self.replies[0].content and \
+                re.fullmatch(GENERIC_MAIL_SEPARATOR, self.replies[1].headers, flags=re.MULTILINE | re.IGNORECASE) and \
+                self.replies[1].content != self.replies[1].headers:
+            self.replies.pop(0)
 
         return self
 
