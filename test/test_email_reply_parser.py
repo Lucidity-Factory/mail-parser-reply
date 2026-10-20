@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import unittest
 import logging
 
@@ -353,6 +354,16 @@ class EmailMessageTest(unittest.TestCase):
         mail = self.get_email('email_fr_gmail_name_contains_le', parse=True, languages=['fr'])
         self.assertEqual("Bonjour Ben,\n\nMerci, c'est parfait.\n\nAnn", mail.latest_reply)
         self.assertTrue('a \u00e9crit' in mail.replies[1].headers)
+
+    def test_fr_wrote_header_runtime_many_le_lines(self):
+        # Regression: an unbounded [\s\S] gap in the FR lookahead made matching roughly
+        # cubic in the number of lines starting with "Le" (800 lines took about 18 s).
+        # Generated input rather than a fixture: this pins run time, not pattern coverage.
+        text = 'Hi\n\n' + 'Le point est not\u00e9\n' * 800
+        start = time.monotonic()
+        mail = EmailReplyParser(languages=['fr']).read(text)
+        self.assertLess(time.monotonic() - start, 1.0)
+        self.assertEqual(text.strip(), mail.latest_reply)
 
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
