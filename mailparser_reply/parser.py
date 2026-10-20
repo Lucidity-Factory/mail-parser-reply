@@ -178,19 +178,20 @@ class EmailMessage:
         """ Processes mail text body, splitting it up in distinct, digestible EmailReplies
          based on headers separating mail replies/mail parts """
 
-        # Find all headers in mail body and convert to flat list
-        headers = self.HEADER_REGEX.findall(self.text)
-        headers = [header for header in chain.from_iterable(headers) if header]
+        # Find all headers in mail body with the position each one matched at; searching the text
+        # for the header string instead can land on an earlier copy of it (e.g. a longer line of
+        # underscores in a signature above an Outlook separator)
+        headers = [
+            (match.start(group), header)
+            for match in self.HEADER_REGEX.finditer(self.text)
+            for group, header in enumerate(match.groups(), start=1) if header
+        ]
 
         current_position = 0
         previous_header = ''
 
         # Delimits eMail body by headers
-        for header in headers:
-            position = self.text.find(
-                header,
-                current_position + 1 if current_position > 0 else current_position
-            )
+        for position, header in headers:
 
             disclaimers, signatures = self._process_signatures_disclaimers(self.text[current_position:position])
 
