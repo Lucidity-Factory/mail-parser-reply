@@ -71,11 +71,16 @@ MAIL_LANGUAGES: Dict[str, Dict[str, str]] = {
         #   " from ", an address (no space around the "@") and the final colon must all be present;
         #   no other colon may follow " from ", so the match cannot run on into another date.
         #   See email_mailru_advert_inline.txt / email_mailru_advert_own_line.txt for example data
+        # Zoho / Yahoo header: "---- On Wed, 10 Jun 2026 10:15:00 +0100 Name <addr> wrote ----", no colon,
+        #   with the quote below it unprefixed; two or more dashes on each side (real ones close with
+        #   three or four), and the line must hold a digit (the date), so prose such as
+        #   "-- On my way, I wrote --" is left alone. See email_zoho_dashed_wrote.txt
         'wrote_header': r'^(?!On[.\s]*On\s(' + WRAPPED_GAP + r')\swrote:)(' + QUOTED_MATCH_INCLUDE + r'On\s' + WRAPPED_GAP + r'\s?wrote:)$'
                         + r'|^(' + QUOTED_MATCH_INCLUDE + r'[^\n]{0,200}?(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day, '
                         + r'\d{1,2} (?:January|February|March|April|May|June|July|August|September|October|November'
                         + r'|December) \d{4}, \d{1,2}:\d{2}\s?(?:[AP]M|[ap]\.m\.)? [+-]\d{2}:\d{2} '
-                        + r'from [^\n@:]{0,80}[^\s@:]@[^\s@:][^\n:]{0,120}:)$',
+                        + r'from [^\n@:]{0,80}[^\s@:]@[^\s@:][^\n:]{0,120}:)$'
+                        + r'|^(' + QUOTED_MATCH_INCLUDE + r'-{2,} ?On (?=[^\n]*\d)[^\n]{1,200}? wrote ?-{2,})$',
         # Outlook-style header
         # (?:(?:^|\n)[* ]*(?:From|Sent|To|Subject|Date|Cc):[ *]* – match From:/*From*:, ... headers
         # (?:\s{,2}).*){2,} – allow multi-line headers; some clients split the headers up into multiple lines.

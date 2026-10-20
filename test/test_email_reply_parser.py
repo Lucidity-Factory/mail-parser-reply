@@ -574,6 +574,21 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual('', mail.replies[0].signatures)
         self.assertTrue('- how about bullets\n- and another' in mail.replies[0].body)
 
+    def test_zoho_dashed_wrote(self):
+        # Zoho / Yahoo "---- On ... wrote ----" header (no colon), with the quote below it unprefixed
+        mail = self.get_email('email_zoho_dashed_wrote', parse=True, languages=['en'])
+        self.assertEqual("Hi Ben,\n\nThank you, that is fine.\n\nAnn", mail.latest_reply)
+        self.assertEqual(
+            '---- On Wed, 10 Jun 2026 10:15:00 +0100 Ben Sample <ben@charity.example> wrote ----',
+            mail.replies[1].headers
+        )
+        # Some real ones close with three dashes (4 of 22 in the i2w corpus)
+        text = 'Thanks\n\n---- On Wed, 10 Jun 2026 10:15:00 +0100 Ben <ben@charity.example> wrote ---\n\nHi\n'
+        self.assertEqual('Thanks', EmailReplyParser(languages=['en']).read(text).latest_reply)
+        # Generated guard: prose between dashes without a date is not a header
+        text = 'Hi\n\n-- On my way, I wrote --\n\nmore text\n'
+        self.assertEqual(text.strip(), EmailReplyParser(languages=['en']).read(text).latest_reply)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt', encoding='utf-8') as f:
