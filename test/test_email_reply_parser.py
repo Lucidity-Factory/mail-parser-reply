@@ -537,11 +537,13 @@ class EmailMessageTest(unittest.TestCase):
         self.assertTrue(mail.replies[2].headers.startswith('From: Ben Sample <ben@charity.example>'))
 
     def test_forward_separator_then_text(self):
-        # A forward separator with the sender's own text directly under it and no header block
-        # (seen from Yahoo): that text is the new text, not a quote
+        # A forward separator with text directly under it and no header block (seen from Yahoo):
+        # the text is forwarded content like any other forward's, so there is no new text
         mail = self.get_email('email_forward_separator_then_text', parse=True, languages=['en'])
-        self.assertTrue(mail.latest_reply.startswith('---------- Forwarded message ----------\nHi I am writing'))
-        self.assertTrue(mail.latest_reply.endswith('Ann Example'))
+        self.assertEqual('', mail.latest_reply)
+        self.assertEqual('---------- Forwarded message ----------', mail.replies[1].headers)
+        self.assertTrue(mail.replies[1].body.startswith('Hi I am writing'))
+        self.assertTrue(mail.replies[1].body.endswith('Ann Example'))
 
     def test_sig_hyphen_list_is_body(self):
         # A hyphen list in the new text is not a "-John" style signature; the sign-off below it is
