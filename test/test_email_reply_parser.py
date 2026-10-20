@@ -461,6 +461,35 @@ class EmailMessageTest(unittest.TestCase):
         self.assertEqual('============ Forwarded Message ============', mail.replies[1].headers)
         self.assertTrue(mail.replies[1].content.startswith('============ Forwarded Message ============\nFrom :'))
 
+    def test_outlook_separator_not_kept(self):
+        # Outlook's underscore line before "From:" belongs to the quote, not to the reply
+        mail = self.get_email('email_outlook_separator_before_from', parse=True, languages=['en'])
+        self.assertEqual("Thanks, all sorted.\n\nAnn\n\nGet Outlook for iOS", mail.latest_reply)
+        self.assertEqual(3, len(mail.replies))
+        self.assertEqual('________________________________', mail.replies[1].headers)
+        self.assertTrue(mail.replies[2].headers.startswith('From: Charity Support Team <help@charity.example>'))
+
+    def test_outlook_separator_in_signature_kept(self):
+        # Underscore lines not followed by "From:" (signature, meeting invite) are not a separator
+        text = ('Thanks\n\nAnn\n________________________________\nTel: 0100 000 000\n'
+                '________________________________\nJoin the meeting now\nMeeting ID: 123\n'
+                '________________________________\nfrom: memory, the venue is Hall 2.\n')
+        mail = EmailReplyParser(languages=['en']).read(text)
+        self.assertEqual(text.strip(), mail.latest_reply)
+
+    def test_outlook_separator_directly_above_line(self):
+        # Upstream fixture: the reply sits directly above Outlook's underscore line, which is
+        # no longer left at the end of the reply
+        mail = self.get_email('email_2_2', parse=True, languages=['en'])
+        self.assertEqual('Outlook with a reply directly above line', mail.latest_reply)
+
+    def test_outlook_separator_below_longer_signature_line(self):
+        # A longer underscore line in the signature must not be taken for the separator below it
+        text = ('Thanks\n\nAnn\n' + '_' * 40 + '\nAcme Ltd, 1 High St\n\nOne more thing.\n' + '_' * 32 +
+                '\nFrom: Ben <ben@charity.example>\nSent: Monday\nTo: Ann\nSubject: Hello\n\nHi Ann\n')
+        mail = EmailReplyParser(languages=['en']).read(text)
+        self.assertEqual('Thanks\n\nAnn\n' + '_' * 40 + '\nAcme Ltd, 1 High St\n\nOne more thing.', mail.latest_reply)
+
     def get_email(self, name: str, parse: bool = True, languages: list = None):
         """ Return EmailMessage instance or text content """
         with open(f'test/emails/{name}.txt', encoding='utf-8') as f:
