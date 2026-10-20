@@ -98,6 +98,8 @@ latest_reply = EmailReplyParser(languages=languages).parse_reply(text=mail_body)
 
 If the mail has no new text because it starts with a quote header (for example a reply whose new text is only an image), the latest reply is an empty string and the quoted message follows in the next replies (after a forward separator, if there is one). A separator followed directly by text rather than a header block does not count as a quote.
 
+Apart from that case, forwards get no special treatment: a forward separator is a header like any other, so a forward with nothing written above it also gives an empty latest reply, and the following replies hold the separator line (in its own reply) and then the forwarded message, whose header block is in `headers` and text in `body`. Whether forwarded content should count as the message is up to the calling system, which knows the subject and its own purpose; one that wants it can take the first reply with a non-empty `body`.
+
 ### Parser API
 
 ```
